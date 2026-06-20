@@ -1,15 +1,18 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from '@/store/useDesulfurizationStore';
 import { generateDesulfurizationData } from '@/data/generateData';
 import StatusBar from '@/components/StatusBar';
-import FurnaceVisualization from '@/components/FurnaceVisualization';
+import FurnaceDeckGL from '@/components/FurnaceDeckGL';
 import SulfurCurvePanel from '@/components/SulfurCurvePanel';
 import SensorPanel from '@/components/SensorPanel';
 import TimeControl from '@/components/TimeControl';
+import PerformanceMonitor from '@/components/PerformanceMonitor';
 
 export default function Home() {
-  const { data, setData, playbackState, playbackSpeed, incrementIndex } = useStore();
+  const { data, setData, playbackState, playbackSpeed, incrementIndex, currentIndex } = useStore();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [activeParticleCount, setActiveParticleCount] = useState(0);
+  const [showPerf, setShowPerf] = useState(true);
 
   useEffect(() => {
     if (!data) {
@@ -38,6 +41,14 @@ export default function Home() {
     };
   }, [playbackState, playbackSpeed, incrementIndex]);
 
+  useEffect(() => {
+    if (!data) return;
+    const point = data.timeSeries[currentIndex];
+    if (!point) return;
+    const intensity = Math.min(1, point.powder_flow / 9);
+    setActiveParticleCount(Math.floor(2000 * intensity));
+  }, [data, currentIndex]);
+
   if (!data) {
     return (
       <div className="w-screen h-screen bg-[#0a0e17] flex items-center justify-center">
@@ -52,9 +63,16 @@ export default function Home() {
     <div className="w-screen h-screen bg-[#0a0e17] flex flex-col overflow-hidden">
       <StatusBar />
 
-      <div className="flex-1 flex min-h-0">
+      <div className="flex-1 flex min-h-0 relative">
         <div className="flex-1 min-w-0 relative">
-          <FurnaceVisualization />
+          <FurnaceDeckGL />
+          {showPerf && <PerformanceMonitor particleCount={activeParticleCount} />}
+          <button
+            onClick={() => setShowPerf(!showPerf)}
+            className="absolute top-12 left-4 bg-[#0a0e17]/80 backdrop-blur-sm border border-cyan-900/30 rounded px-2 py-1 text-[10px] text-cyan-400/70 hover:text-cyan-300 z-10 font-mono"
+          >
+            {showPerf ? '隐藏性能' : '显示性能'}
+          </button>
         </div>
 
         <div className="w-[380px] flex flex-col border-l border-cyan-900/20 bg-[#0a0e17]/80">
